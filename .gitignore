@@ -1,0 +1,40 @@
+# 元PDFファイル（著作権・容量の関係で除外）
+*.pdf
+
+# 中間生成物
+output/
+output_v2/
+output_multi/*/segments_raw.csv
+output_multi/*/segments_filtered.csv
+output_multi/*/junctions.csv
+
+# Y-bus バイナリ（CSVから再生成可能）
+**/ybus_complex.npy
+**/ybus_real.csv
+**/ybus_imag.csv
+**/network_sld.png
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ログ
+*.log
+run_log.txt
+run_viz_log.txt
+validate_log.txt
+output_multi/bpm_log.txt
+output_multi/test_log.txt
