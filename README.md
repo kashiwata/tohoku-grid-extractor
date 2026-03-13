@@ -1,6 +1,6 @@
 # tohoku-grid-extractor
 
-**東北地方 ローカル系統モデル — 潮流計算・OPF 用データセット**
+**東北電力ネットワーク ローカル系統モデル — 潮流計算・OPF 用データセット**
 
 > Open local power grid dataset for Tohoku Electric Power Network (Japan),
 > ready for power flow analysis and Optimal Power Flow (OPF).
@@ -41,21 +41,29 @@
 
 ## データ構成 / Dataset
 
+> **注意 / Note**: 元の系統図PDFは東北電力ネットワーク株式会社の資料であり転載禁止のため、
+> 抽出データ (`data/`) はリポジトリに含まれていません。
+> 下記手順でスクリプトを実行すると `output_multi/` に生成されます。
+>
+> The extracted data (`data/`) is **not included** in this repository due to the "no redistribution"
+> clause of the original source material. Run the pipeline to regenerate it locally.
+
+スクリプト実行後の出力構成:
 ```
-data/
-├── 01_aomori/          # 青森県
-├── 02_iwate/           # 岩手県
-├── 03_akita/           # 秋田県
-├── 04_miyagi/          # 宮城県
-├── 05_yamagata/        # 山形県
-├── 06_fukushima/       # 福島県
-├── 07_niigata/         # 新潟県
+output_multi/
+├── 01/                 # 青森県
+├── 02/                 # 岩手県
+├── 03/                 # 秋田県
+├── 04/                 # 宮城県
+├── 05/                 # 山形県
+├── 06/                 # 福島県
+├── 07/                 # 新潟県
 └── combined/           # 全地域統合モデル
 ```
 
 各地域フォルダ:
 ```
-{rid}_{name}/
+{rid}/
 ├── buses.csv            # ノード（変電所・発電所・開閉所・接続点）
 ├── lines.csv            # エッジ（送電線・接続タイプ・座標列）
 └── power_flow/
@@ -90,17 +98,19 @@ data/
 
 ### Python で Y-bus を読み込む
 
+まず `src/pipeline_multi.py` と `src/build_power_model.py` を実行してデータを生成してください。
+
 ```python
 import numpy as np
 import pandas as pd
 
-# 山形県の Y-bus を読み込む
-ybus_real = pd.read_csv("data/05_yamagata/power_flow/ybus_real.csv", index_col=0)
-ybus_imag = pd.read_csv("data/05_yamagata/power_flow/ybus_imag.csv", index_col=0)
+# 山形県の Y-bus を読み込む（output_multi/ 以下に生成される）
+ybus_real = pd.read_csv("output_multi/05/power_flow/ybus_real.csv", index_col=0)
+ybus_imag = pd.read_csv("output_multi/05/power_flow/ybus_imag.csv", index_col=0)
 Y = ybus_real.values + 1j * ybus_imag.values
 
-# または numpy 形式（要 build_power_model.py の実行）
-# Y = np.load("data/05_yamagata/power_flow/ybus_complex.npy")
+# または numpy 形式
+# Y = np.load("output_multi/05/power_flow/ybus_complex.npy")
 
 print(f"Y-bus shape: {Y.shape}")  # (200, 200)
 ```
@@ -108,7 +118,7 @@ print(f"Y-bus shape: {Y.shape}")  # (200, 200)
 ### バスデータの確認
 
 ```python
-buses = pd.read_csv("data/05_yamagata/power_flow/buses_pf.csv")
+buses = pd.read_csv("output_multi/05/power_flow/buses_pf.csv")
 print(buses[['bus_id', 'ss_type', 'bus_type', 'load_mw', 'p_gen_mw', 'v_pu']].head(10))
 ```
 
@@ -275,8 +285,6 @@ python -X utf8 src/visualize_all.py
 ## ライセンス / License
 
 ソースコード: [MIT License](LICENSE)
-
-抽出データ: 東北電力ネットワーク株式会社の利用規約に従うこと。
 
 ---
 
