@@ -51,6 +51,92 @@ Z_BASE_66    = V_BASE_66_KV**2 / S_BASE_MVA   # 43.56 Ω
 Z_BASE_33    = V_BASE_33_KV**2 / S_BASE_MVA   # 10.89 Ω
 
 # ============================================================
+# 地理アンカー点: {rid: [(pdf_x, pdf_y, lat, lon), ...]}
+# visualize_all.py と共通のアンカー点 (1次変電所の確認済み緯度経度)
+# ============================================================
+ANCHORS = {
+    '01': [
+        (666, 731, 40.77, 140.58),
+        (580, 1052, 41.38, 141.22),
+        (220, 520, 40.50, 141.49),
+        (231, 456, 40.55, 141.60),
+    ],
+    '02': [
+        (367, 484, 39.74, 141.15),
+        (310, 480, 39.72, 141.10),
+        (370, 705, 39.44, 141.10),
+        (673, 792, 39.36, 141.89),
+        (227, 833, 38.98, 141.07),
+        (390, 1019, 38.83, 141.43),
+    ],
+    '03': [
+        (278, 520, 39.74, 140.10),
+        (270, 268, 40.18, 140.03),
+        (273, 730, 39.38, 140.05),
+        (654, 240, 40.18, 140.74),
+        (538, 894, 39.06, 140.48),
+        (169, 428, 39.89, 139.84),
+        (346, 645, 39.45, 140.30),
+        (560, 820, 39.10, 140.51),
+    ],
+    '04': [
+        (386, 218, 38.71, 141.02),
+        (230, 438, 38.53, 140.72),
+        (402, 690, 38.29, 140.89),
+        (549, 550, 38.36, 141.18),
+        (630, 640, 38.26, 141.25),
+        (723, 550, 38.34, 141.50),
+    ],
+    '05': [
+        (377, 298, 38.84, 139.74),
+        (275, 375, 38.73, 139.87),
+        (556, 278, 38.96, 140.18),
+        (622, 449, 38.58, 140.38),
+        (577, 603, 38.37, 140.24),
+        (451, 917, 38.13, 140.05),
+        (562, 609, 38.38, 140.28),
+    ],
+    '06': [
+        (157, 521, 36.98, 140.83),
+        (316, 694, 37.09, 140.68),
+        (544, 605, 37.13, 140.21),
+        (420, 430, 37.35, 140.45),
+        (230, 370, 37.35, 140.90),
+        (650, 440, 37.30, 139.95),
+    ],
+    '07': [
+        (101, 1008, 37.04, 137.87),
+        (660, 401,  38.22, 139.49),
+        (449, 999,  37.04, 138.89),
+        (114, 788,  37.10, 138.22),
+        (471, 783,  37.46, 138.85),
+        (654, 432,  38.07, 139.49),
+        (457, 666,  37.89, 139.03),
+    ],
+}
+
+
+def compute_affine(anchors):
+    """最小二乗アフィン変換 (pdf_x, pdf_y) → (lat, lon) を推定する。"""
+    n = len(anchors)
+    M = np.zeros((n, 3))
+    b_lat = np.zeros(n)
+    b_lon = np.zeros(n)
+    for i, (px, py, lat, lon) in enumerate(anchors):
+        M[i] = [px, py, 1.0]
+        b_lat[i] = lat
+        b_lon[i] = lon
+    coef_lat, _, _, _ = np.linalg.lstsq(M, b_lat, rcond=None)
+    coef_lon, _, _, _ = np.linalg.lstsq(M, b_lon, rcond=None)
+    return coef_lat, coef_lon
+
+
+def xy_to_latlon(x, y, coef_lat, coef_lon):
+    v = np.array([x, y, 1.0])
+    return float(v @ coef_lat), float(v @ coef_lon)
+
+
+# ============================================================
 # 地域パラメータ
 # ============================================================
 REGION_PARAMS = {
@@ -165,6 +251,18 @@ def load_region(rid):
     buses_mc = buses[buses['bus_id'].isin(main_nodes)].copy().reset_index(drop=True)
     mask_l   = lines['bus0_id'].isin(main_nodes) & lines['bus1_id'].isin(main_nodes)
     lines_mc = lines[mask_l].copy().reset_index(drop=True)
+
+    # アンカー点からアフィン変換で lat/lon を付与
+    anc = ANCHORS.get(rid)
+    if anc and len(anc) >= 2:
+        coef_lat, coef_lon = compute_affine(anc)
+        buses_mc['lat'] = buses_mc.apply(
+            lambda r: xy_to_latlon(r['x'], r['y'], coef_lat, coef_lon)[0], axis=1)
+        buses_mc['lon'] = buses_mc.apply(
+            lambda r: xy_to_latlon(r['x'], r['y'], coef_lat, coef_lon)[1], axis=1)
+        print(f"  [{rid}] lat/lon付与: "
+              f"lat={buses_mc['lat'].min():.2f}~{buses_mc['lat'].max():.2f}, "
+              f"lon={buses_mc['lon'].min():.2f}~{buses_mc['lon'].max():.2f}")
 
     return buses_mc, lines_mc
 
@@ -699,12 +797,17 @@ def run_combined(all_data):
     combined_lines = pd.concat(combined_lines_list, ignore_index=True)
 
     # 統合モデルでは SL は1つだけ。残りを PV に降格
+    # SL は p_gen_mw=0（スラック解で決まる）なので PV 降格時に P を設定する
+    p_src   = CAP_MVA.get('1次変電所', 40.0) * SRC_RATE          # 16 MW
+    tan_phi = math.tan(math.acos(POWER_FACTOR))
     sl_mask = combined_buses['bus_type'] == 'SL'
     sl_idxs = combined_buses[sl_mask].index.tolist()
     if len(sl_idxs) > 1:
         for idx in sl_idxs[1:]:
-            combined_buses.at[idx, 'bus_type'] = 'PV'
-        print(f"  統合SL調整: SL=1, PVに降格={len(sl_idxs)-1}件")
+            combined_buses.at[idx, 'bus_type']   = 'PV'
+            combined_buses.at[idx, 'p_gen_mw']   = round(p_src, 4)
+            combined_buses.at[idx, 'q_gen_mvar'] = round(p_src * tan_phi, 4)
+        print(f"  統合SL調整: SL=1, PVに降格={len(sl_idxs)-1}件 (P={p_src}MW設定)")
 
     # 県境跨ぎ接続（オフセット前の buses_pf を使って検出）
     cross_connections = find_cross_pref_connections(all_data)
