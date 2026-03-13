@@ -28,7 +28,8 @@ import networkx as nx
 matplotlib.rcParams['font.family'] = 'MS Gothic'
 matplotlib.rcParams['axes.unicode_minus'] = False
 
-BASE_DIR    = r"C:\Users\taku.kashiwazaki\Documents\PowerSystem"
+BASE_DIR    = os.environ.get("TOHOKU_GRID_DIR",
+                             os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 OUT_BASE    = os.path.join(BASE_DIR, "output_multi")
 OUT_PNG     = os.path.join(OUT_BASE, "network_all.png")
 

@@ -282,4 +282,4 @@ python -X utf8 src/visualize_all.py
 
 ## 作者 / Author
 
-Taku Kashiwazaki
+kashiwata (GitHub)

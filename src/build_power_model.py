@@ -205,7 +205,8 @@ CROSS_PREF_DEG     = 0.6    # 近傍判定距離 [度] ≈ 55km
 # ============================================================
 # パス
 # ============================================================
-BASE_DIR = r"C:\Users\taku.kashiwazaki\Documents\PowerSystem"
+BASE_DIR = os.environ.get("TOHOKU_GRID_DIR",
+                          os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def region_dir(rid):

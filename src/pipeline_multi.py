@@ -68,7 +68,8 @@ REGIONS = {
     '07': {'name': '新潟県', 'prefix': 'local07', 'w66': (1.10, 1.45), 'w33': (0.55, 0.75)},
 }
 
-BASE_DIR     = r"C:\Users\taku.kashiwazaki\Documents\PowerSystem"
+BASE_DIR     = os.environ.get("TOHOKU_GRID_DIR",
+                              os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 INPUT_DIR    = os.path.join(BASE_DIR, "Input", "tohoku_local")
 OUTPUT_BASE  = os.path.join(BASE_DIR, "output_multi")
 
