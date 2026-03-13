@@ -1,6 +1,6 @@
 # tohoku-grid-extractor
 
-**東北電力ネットワーク ローカル系統モデル — 潮流計算・OPF 用データセット**
+**東北地方 ローカル系統モデル — 潮流計算・OPF 用データセット**
 
 > Open local power grid dataset for Tohoku Electric Power Network (Japan),
 > ready for power flow analysis and Optimal Power Flow (OPF).
